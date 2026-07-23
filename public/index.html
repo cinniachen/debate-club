@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>随地大小辩 · 网络辩论赛</title>
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #1a1a2e;
+  --ink-light: #3d3d5c;
+  --paper: #fdfaf3;
+  --paper-warm: #f7f3e8;
+  --card: #ffffff;
+  --border: #e8e4d9;
+  --border-strong: #d4cfc0;
+  --red: #c44536;
+  --red-light: #fdf0ed;
+  --blue: #2d5f8a;
+  --blue-light: #edf4fa;
+  --gold: #b8860b;
+  --gold-light: #fef9ee;
+  --green: #2d8a4e;
+  --green-light: #edf8f0;
+  --text: #1a1a2e;
+  --text-secondary: #6b6b7b;
+  --text-muted: #9b9bab;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(26,26,46,0.06);
+  --shadow: 0 4px 16px rgba(26,26,46,0.08);
+  --shadow-lg: 0 12px 40px rgba(26,26,46,0.12);
+  --font-display: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { font-size: 15px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Background Texture ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(196,68,54,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(45,95,138,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(184,134,11,0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Header ===== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(253,250,243,0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+}
+
+.header-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none;
+}
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--red), #a03a2e);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #fff;
+  box-shadow: 0 2px 8px rgba(196,68,54,0.3);
+}
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--ink); letter-spacing: 0.02em;
+}
+.logo-sub {
+  font-size: 0.7rem; color: var(--text-muted);
+  font-family: var(--font-body); font-weight: 400;
+  display: block; letter-spacing: 0;
+}
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ===== Navigation ===== */
+.nav-tabs {
+  display: flex; gap: 4px;
+  background: var(--paper-warm);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+.nav-tab {
+  padding: 8px 20px; border-radius: 8px;
+  border: none; background: transparent;
+  font-size: 0.9rem; cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition); white-space: nowrap;
+  font-family: var(--font-body);
+}
+.nav-tab:hover { color: var(--ink); background: rgba(255,255,255,0.6); }
+.nav-tab.active {
+  background: var(--card); color: var(--red);
+  box-shadow: var(--shadow-sm); font-weight: 600;
+}
+
+/* ===== Main Layout ===== */
+.main {
+  position: relative; z-index: 1;
+  max-width: 1200px; margin: 0 auto; padding: 2rem;
+}
+
+.tab-panel { display: none; animation: fadeSlide 0.35s ease; }
+.tab-panel.active { display: block; }
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Cards ===== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.card:hover { box-shadow: var(--shadow); }
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.card-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--ink);
+}
+.card-subtitle { font-size: 0.85rem; color: var(--text-muted); }
+
+/* ===== Section Headers ===== */
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 1.5rem;
+}
+.section-icon {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+}
+.section-icon.red { background: var(--red-light); color: var(--red); }
+.section-icon.blue { background: var(--blue-light); color: var(--blue); }
+.section-icon.gold { background: var(--gold-light); color: var(--gold); }
+.section-icon.green { background: var(--green-light); color: var(--green); }
+.section-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--ink); }
+.section-desc { font-size: 0.9rem; color: var(--text-secondary); }
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-primary:hover { background: #a03a2e; box-shadow: 0 2px 8px rgba(196,68,54,0.3); }
+.btn-secondary { background: var(--card); color: var(--ink); border-color: var(--border-strong); }
+.btn-secondary:hover { background: var(--paper-warm); }
+.btn-outline { background: transparent; color: var(--red); border-color: var(--red); }
+.btn-outline:hover { background: var(--red-light); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border-color: transparent; }
+.btn-ghost:hover { background: var(--paper-warm); color: var(--ink); }
+.btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+.btn-xs { padding: 3px 8px; font-size: 0.75rem; border-radius: 6px; }
+.btn-danger { color: var(--red); border-color: transparent; }
+.btn-danger:hover { background: var(--red-light); }
+
+/* ===== Forms ===== */
+.form-group { margin-bottom: 1rem; }
+.form-label {
+  display: block; font-size: 0.85rem; font-weight: 600;
+  color: var(--ink-light); margin-bottom: 4px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.9rem; font-family: var(--font-body);
+  background: var(--card); color: var(--text);
+  transition: var(--transition);
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none; border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(196,68,54,0.1);
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+.form-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+/* ===== Grid ===== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+
+/* ===== Event Card ===== */
+.event-card {
+  border-left: 4px solid transparent;
+  transition: var(--transition);
+}
+.event-card.status-open { border-left-color: var(--green); }
+.event-card.status-ready { border-left-color: var(--gold); }
+.event-card.status-ongoing { border-left-color: var(--red); }
+.event-card.status-done { border-left-color: var(--text-muted); }
+
+.event-topic { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+.event-time { font-size: 0.85rem; color: var(--text-secondary); }
+.event-meta { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+.event-meta-item { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--text-muted); }
+.event-meta-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+.event-meta-item .dot.pro { background: var(--red); }
+.event-meta-item .dot.con { background: var(--blue); }
+
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 600;
+}
+.badge-open { background: var(--green-light); color: var(--green); }
+.badge-ready { background: var(--gold-light); color: var(--gold); }
+.badge-ongoing { background: var(--red-light); color: var(--red); }
+.badge-done { background: #f0f0f3; color: var(--text-muted); }
+
+/* ===== Registration List ===== */
+.reg-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.reg-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--paper-warm); font-size: 0.85rem;
+}
+.reg-item .side-tag {
+  padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;
+}
+.reg-item .side-tag.pro { background: var(--red-light); color: var(--red); }
+.reg-item .side-tag.con { background: var(--blue-light); color: var(--blue); }
+.reg-item .side-tag.watch { background: #f0f0f3; color: var(--text-muted); }
+
+/* ===== Topic Card ===== */
+.topic-card { cursor: pointer; transition: var(--transition); }
+.topic-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.topic-title { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
+.topic-positions { font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0; }
+.topic-positions span.pro { color: var(--red); }
+.topic-positions span.con { color: var(--blue); }
+.topic-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+
+.vote-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 0.8rem; cursor: pointer; color: var(--text-secondary);
+  transition: var(--transition);
+}
+.vote-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-light); }
+.vote-btn.voted { background: var(--gold-light); color: var(--gold); border-color: var(--gold); }
+
+.vote-count { font-weight: 700; font-size: 0.9rem; }
+
+/* ===== Prep Notes ===== */
+.note-card { border-left: 3px solid var(--border-strong); }
+.note-card.type-argument { border-left-color: var(--red); }
+.note-card.type-evidence { border-left-color: var(--blue); }
+.note-card.type-question { border-left-color: var(--gold); }
+.note-card.type-strategy { border-left-color: var(--green); }
+
+.note-title { font-weight: 600; margin-bottom: 4px; }
+.note-content { font-size: 0.85rem; color: var(--text-secondary); white-space: pre-wrap; line-height: 1.5; }
+.note-meta { display: flex; gap: 8px; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); }
+
+/* ===== AI Chat ===== */
+.chat-container {
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  height: 450px; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--card);
+}
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 1rem;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.chat-message {
+  max-width: 80%; padding: 10px 14px; border-radius: var(--radius-sm);
+  font-size: 0.9rem; line-height: 1.6; animation: msgIn 0.25s ease;
+}
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.chat-message.user {
+  align-self: flex-end; background: var(--red); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-message.ai {
+  align-self: flex-start; background: var(--paper-warm); color: var(--ink);
+  border-bottom-left-radius: 4px;
+}
+.chat-message.system {
+  align-self: center; background: transparent; color: var(--text-muted);
+  font-size: 0.8rem; font-style: italic; max-width: 100%;
+}
+.chat-input-area {
+  display: flex; gap: 8px; padding: 1rem;
+  border-top: 1px solid var(--border); background: var(--paper-warm);
+}
+.chat-input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 24px; font-size: 0.9rem; font-family: var(--font-body);
+  background: var(--card);
+}
+.chat-input:focus { outline: none; border-color: var(--red); }
+
+/* AI 引擎状态徽章 */
+.engine-badge { font-size: 0.68rem; padding: 3px 9px; border-radius: 11px; white-space: nowrap; font-weight: 600; }
+.engine-live { background: rgba(46,160,67,0.16); color: #2ea043; }
+.engine-template { background: rgba(150,150,150,0.16); color: var(--text-muted); }
+
+
+/* 语音输入麦克风按钮 */
+.mic-btn { flex-shrink: 0; font-size: 1.05rem; line-height: 1; padding: 8px 11px; border-radius: 50%; }
+.mic-btn.recording {
+  color: #fff; background: var(--red); border-color: var(--red);
+  animation: mic-pulse 1.3s infinite;
+}
+.chat-input.voice-active { border-color: var(--red); box-shadow: 0 0 0 3px rgba(196,68,54,0.14); }
+@keyframes mic-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(196,68,54,0.55); }
+  70%  { box-shadow: 0 0 0 11px rgba(196,68,54,0); }
+  100% { box-shadow: 0 0 0 0 rgba(196,68,54,0); }
+}
+
+
+/* ===== Timer ===== */
+.timer-display {
+  text-align: center; padding: 2rem;
+}
+.timer-clock {
+  font-family: var(--font-mono);
+  font-size: 5rem; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1;
+}
+.timer-clock.warning { color: var(--gold); }
+.timer-clock.danger { color: var(--red); animation: pulse 0.5s ease infinite alternate; }
+@keyframes pulse { to { opacity: 0.6; } }
+.timer-phase {
+  font-family: var(--font-display); font-size: 1.3rem;
+  font-weight: 700; margin: 8px 0; color: var(--ink);
+}
+.timer-side {
+  font-size: 0.9rem; color: var(--text-secondary);
+  padding: 4px 12px; border-radius: 20px; display: inline-block;
+}
+.timer-side.pro { background: var(--red-light); color: var(--red); }
+.timer-side.con { background: var(--blue-light); color: var(--blue); }
+.timer-side.both { background: #f0f0f3; color: var(--text-muted); }
+
+.timer-controls { display: flex; gap: 12px; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+.timer-controls .btn { min-width: 80px; justify-content: center; }
+
+.timer-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+.timer-preset {
+  padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 0.8rem; cursor: pointer; color: var(--text-secondary);
+  transition: var(--transition);
+}
+.timer-preset:hover, .timer-preset.active { border-color: var(--red); color: var(--red); background: var(--red-light); }
+.timer-preset.active { font-weight: 600; }
+
+.phase-list { margin-top: 1rem; }
+.phase-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; margin-bottom: 4px;
+  background: var(--paper-warm);
+}
+.phase-item.current { background: var(--red-light); font-weight: 600; }
+.phase-item.done { opacity: 0.5; }
+.phase-item .phase-dur { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.8rem; }
+
+/* ===== Novice Guide ===== */
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.guide-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem;
+  transition: var(--transition);
+}
+.guide-card:hover { box-shadow: var(--shadow); }
+.guide-card h3 {
+  font-family: var(--font-display); font-size: 1rem;
+  margin-bottom: 8px; color: var(--ink);
+}
+.guide-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+.guide-card ul { margin: 8px 0 0 16px; font-size: 0.85rem; color: var(--text-secondary); }
+.guide-card ul li { margin-bottom: 4px; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(26,26,46,0.4);
+  backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--card); border-radius: var(--radius-lg);
+  padding: 2rem; max-width: 520px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.3s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.modal h2 { font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 1.25rem; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem; }
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed; top: 20px; right: 20px; z-index: 300;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 12px 20px; border-radius: var(--radius-sm);
+  background: var(--card); color: var(--ink);
+  box-shadow: var(--shadow-lg); font-size: 0.85rem;
+  animation: toastIn 0.3s ease;
+  border-left: 3px solid var(--green);
+  max-width: 360px;
+}
+.toast.error { border-left-color: var(--red); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .header { padding: 0 1rem; }
+  .main { padding: 1rem; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .nav-tab { padding: 8px 14px; font-size: 0.8rem; }
+  .timer-clock { font-size: 3.5rem; }
+  .chat-container { height: 350px; }
+  .chat-message { max-width: 90%; }
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ===== Empty State ===== */
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+.empty-state p { font-size: 0.9rem; }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 2px solid var(--border); border-top-color: var(--red);
+  border-radius: 50%; animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Modal overlay specific ===== */
+#registerModal .modal { max-width: 440px; }
+#topicModal .modal { max-width: 500px; }
+#noteModal .modal { max-width: 560px; }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="/">
+      <div class="logo-icon">辩</div>
+      <div>
+        <span class="logo-text">随地大小辩</span>
+        <span class="logo-sub">网络辩论赛</span>
+      </div>
+    </a>
+    <nav class="nav-tabs" id="navTabs">
+      <button class="nav-tab active" data-tab="events">报名参赛</button>
+      <button class="nav-tab" data-tab="topics">辩题广场</button>
+      <button class="nav-tab" data-tab="prep">赛前准备</button>
+      <button class="nav-tab" data-tab="tools">辩论工具</button>
+      <button class="nav-tab" data-tab="guide">新手引导</button>
+    </nav>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- ===== Tab 1: 报名参赛 ===== -->
+  <section class="tab-panel active" id="panel-events">
+    <div class="section-header">
+      <div class="section-icon red">📋</div>
+      <div>
+        <h1 class="section-title">报名参赛</h1>
+        <p class="section-desc">选择一场辩论赛，加入正方或反方，人满即开赛</p>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+      <button class="btn btn-primary" onclick="openCreateEvent()">+ 创建比赛</button>
+    </div>
+
+    <div id="eventsList"></div>
+
+    <!-- 报名弹窗 -->
+    <div class="modal-overlay" id="registerModal">
+      <div class="modal">
+        <h2>报名参赛</h2>
+        <div id="registerEventInfo"></div>
+        <div class="form-group">
+          <label class="form-label">你的名字</label>
+          <input class="form-input" id="regName" placeholder="输入你的昵称">
+        </div>
+        <div class="form-group">
+          <label class="form-label">选择立场</label>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="selectSide('正方')" id="sideBtnPro">🔴 正方</button>
+            <button class="btn btn-secondary" onclick="selectSide('反方')" id="sideBtnCon">🔵 反方</button>
+            <button class="btn btn-ghost" onclick="selectSide('观战')" id="sideBtnWatch">👀 观战</button>
+          </div>
+          <input type="hidden" id="regSide" value="">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('registerModal')">取消</button>
+          <button class="btn btn-primary" onclick="submitRegistration()">确认报名</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建比赛弹窗 -->
+    <div class="modal-overlay" id="createEventModal">
+      <div class="modal">
+        <h2>创建新比赛</h2>
+        <div class="form-group">
+          <label class="form-label">辩题</label>
+          <input class="form-input" id="createTopic" placeholder="例如：人工智能应该取代人类决策吗？">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">比赛时间</label>
+            <input class="form-input" type="datetime-local" id="createTime">
+          </div>
+          <div class="form-group">
+            <label class="form-label">每方人数</label>
+            <select class="form-select" id="createMaxSide">
+              <option value="1">1v1</option>
+              <option value="2">2v2</option>
+              <option value="3" selected>3v3</option>
+              <option value="4">4v4</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">赛制（辩论流程规则，与每方人数无关）</label>
+          <select class="form-select" id="createFormat">
+            <option value="classic">经典四辩赛制 · 14环节完整流程（陈词→质询→对辩→自由辩论→总结）</option>
+            <option value="standard">标准赛制 · 3v3通用流程（立论→驳论→质询→自由辩→总结）</option>
+            <option value="quick">快速赛制 · 精简流程（立论→自由辩→总结）</option>
+            <option value="bp">英国议会制 · BP流程（多人轮次发言）</option>
+            <option value="custom">自定义 · 自由设置环节</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('createEventModal')">取消</button>
+          <button class="btn btn-primary" id="createEventBtn">创建比赛</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tab 2: 辩题广场 ===== -->
+  <section class="tab-panel" id="panel-topics">
+    <div class="section-header">
+      <div class="section-icon gold">💡</div>
+      <div>
+        <h1 class="section-title">辩题广场</h1>
+        <p class="section-desc">提交辩题，点赞投票，高票辩题将成为下一场比赛的主题</p>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+      <button class="btn btn-primary" onclick="openTopicModal()">+ 提交辩题</button>
+    </div>
+
+    <div id="topicsList"></div>
+
+    <div class="modal-overlay" id="topicModal">
+      <div class="modal">
+        <h2>提交新辩题</h2>
+        <div class="form-group">
+          <label class="form-label">辩题</label>
+          <input class="form-input" id="topicTitle" placeholder="例如：社交媒体让社会更分裂还是更融合？">
+        </div>
+        <div class="form-group">
+          <label class="form-label">正方立场</label>
+          <input class="form-input" id="topicPro" placeholder="正方观点简述">
+        </div>
+        <div class="form-group">
+          <label class="form-label">反方立场</label>
+          <input class="form-input" id="topicCon" placeholder="反方观点简述">
+        </div>
+        <div class="form-group">
+          <label class="form-label">你的名字</label>
+          <input class="form-input" id="topicSubmitter" placeholder="输入昵称">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('topicModal')">取消</button>
+          <button class="btn btn-primary" onclick="submitTopic()">提交辩题</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tab 3: 赛前准备 ===== -->
+  <section class="tab-panel" id="panel-prep">
+    <div class="section-header">
+      <div class="section-icon blue">📚</div>
+      <div>
+        <h1 class="section-title">赛前准备</h1>
+        <p class="section-desc">梳理论点、整理资料、与 AI 模拟对辩</p>
+      </div>
+    </div>
+
+    <!-- 私人空间身份条 -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.25rem 0 1.25rem;padding:0.6rem 0.9rem;background:var(--paper-warm);border:1px dashed var(--border);border-radius:var(--radius-sm);font-size:0.85rem;">
+      <span style="font-weight:600;color:var(--text);">🔒 私人空间</span>
+      <span style="color:var(--text-muted);">你的身份：</span>
+      <input id="identityInput" placeholder="设置昵称后内容仅你可见" onchange="setIdentity(this.value)" onblur="setIdentity(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:180px;">
+      <span style="color:var(--text-muted);font-size:0.78rem;">切换昵称可隔离不同人的准备内容</span>
+    </div>
+
+    <div class="grid-2">
+      <!-- 论点笔记区 -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">论点笔记</span>
+            <button class="btn btn-sm btn-primary" onclick="openNoteModal()">+ 新建笔记</button>
+          </div>
+          <!-- 辩题文件夹选择栏 -->
+          <div id="noteTopicBar" style="padding:0 1rem 0.75rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--border); margin-bottom:8px;">
+            <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">📁 辩题：</span>
+            <div id="noteTopicChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+          <div id="notesList" style="max-height:500px; overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- AI 对辩区 -->
+      <div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div class="card-header" style="padding:1rem 1.25rem;">
+            <span class="card-title">🤖 AI 模拟对辩</span>
+            <span id="aiEngineBadge" class="engine-badge engine-template">引擎：检测中…</span>
+            <button class="btn btn-sm btn-ghost" onclick="resetAiChat()">清空对话</button>
+          </div>
+          <div class="form-row" style="padding:0 1.25rem;">
+            <div class="form-group">
+              <label class="form-label">辩题</label>
+              <input class="form-input form-input-sm" id="aiTopic" placeholder="输入辩题">
+            </div>
+            <div class="form-group">
+              <label class="form-label">你的立场</label>
+              <select class="form-select" id="aiSide">
+                <option value="正方">🔴 正方</option>
+                <option value="反方">🔵 反方</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">引擎</label>
+              <select class="form-select" id="aiModel">
+                <option value="chat">💬 DeepSeek 普通</option>
+                <option value="reasoner">🧠 深度思考</option>
+              </select>
+            </div>
+          </div>
+          <div class="chat-container" id="chatContainer">
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-message system">输入辩题和你的立场，开始与 AI 模拟辩论</div>
+            </div>
+            <div class="chat-input-area">
+              <button class="btn btn-sm btn-ghost mic-btn" id="micBtn" onclick="toggleVoiceInput()" title="语音输入（麦克风）" aria-label="语音输入">🎤</button>
+              <input class="chat-input" id="chatInput" placeholder="输入你的论点...（或点🎤语音）" onkeydown="if(event.key==='Enter')sendAiMessage()">
+              <button class="btn btn-primary btn-sm" onclick="sendAiMessage()">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 笔记弹窗 -->
+    <div class="modal-overlay" id="noteModal">
+      <div class="modal">
+        <h2 id="noteModalTitle">新建笔记</h2>
+        <input type="hidden" id="noteEditId" value="">
+        <div class="form-group">
+          <label class="form-label">所属辩题 <span style="font-size:0.75rem;color:var(--text-muted);">(用于分类整理)</span></label>
+          <div style="display:flex;gap:8px;">
+            <select class="form-select" id="noteTopic" style="flex:1;">
+              <option value="">— 选择已有辩题 —</option>
+            </select>
+            <input class="form-input" id="noteTopicNew" placeholder="或输入新辩题" style="flex:1;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">标题</label>
+          <input class="form-input" id="noteTitle" placeholder="论点标题">
+        </div>
+        <div class="form-group">
+          <label class="form-label">内容</label>
+          <textarea class="form-textarea" id="noteContent" placeholder="展开你的论点、论据..." rows="4"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">立场</label>
+            <select class="form-select" id="noteSide">
+              <option value="">通用</option>
+              <option value="正方">正方</option>
+              <option value="反方">反方</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">类型</label>
+            <select class="form-select" id="noteType">
+              <option value="argument">论点</option>
+              <option value="evidence">论据</option>
+              <option value="question">质询问题</option>
+              <option value="strategy">策略</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('noteModal')">取消</button>
+          <button class="btn btn-primary" onclick="saveNote()">保存</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tab 4: 辩论工具 ===== -->
+  <section class="tab-panel" id="panel-tools">
+    <div class="section-header">
+      <div class="section-icon green">⏱</div>
+      <div>
+        <h1 class="section-title">辩论工具</h1>
+        <p class="section-desc">专业辩论计时器，支持多种赛制</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Timer -->
+      <div class="card">
+        <div class="timer-presets" id="timerPresets">
+          <button class="timer-preset active" data-format="classic">经典四辩</button>
+          <button class="timer-preset" data-format="standard">标准赛制</button>
+          <button class="timer-preset" data-format="quick">快速赛制</button>
+          <button class="timer-preset" data-format="bp">英国议会制</button>
+          <button class="timer-preset" data-format="custom">自定义</button>
+        </div>
+
+        <div class="timer-display">
+          <div class="timer-side" id="timerSide"></div>
+          <div class="timer-phase" id="timerPhase">选择赛制开始</div>
+          <div class="timer-clock" id="timerClock">00:00</div>
+          <div id="timerSpeaker" style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+
+        <div class="timer-controls">
+          <button class="btn btn-primary" id="btnTimerStart" onclick="toggleTimer()">▶ 开始</button>
+          <button class="btn btn-secondary" id="btnTimerPause" onclick="pauseTimer()" style="display:none;">⏸ 暂停</button>
+          <button class="btn btn-outline" onclick="resetTimer()">↺ 重置</button>
+          <button class="btn btn-secondary" onclick="nextPhase()">⏭ 下一环节</button>
+          <button class="btn btn-secondary" onclick="prevPhase()">⏮ 上一环节</button>
+        </div>
+      </div>
+
+      <!-- Phase list -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">环节列表</span>
+          <span style="font-size:0.8rem;color:var(--text-muted);" id="phaseProgress"></span>
+        </div>
+        <div class="phase-list" id="phaseList"></div>
+
+        <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border);">
+          <h3 style="font-family:var(--font-display); font-size:0.95rem; margin-bottom:8px;">⏰ 快速计时</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="timer-preset" onclick="quickTimer(30)">30秒</button>
+            <button class="timer-preset" onclick="quickTimer(60)">1分钟</button>
+            <button class="timer-preset" onclick="quickTimer(120)">2分钟</button>
+            <button class="timer-preset" onclick="quickTimer(180)">3分钟</button>
+            <button class="timer-preset" onclick="quickTimer(240)">4分钟</button>
+            <button class="timer-preset" onclick="quickTimer(300)">5分钟</button>
+            <button class="timer-preset" onclick="quickTimer(420)">7分钟</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 辩论技巧速查 -->
+    <div class="card" style="margin-top:1.25rem;">
+      <div class="card-header">
+        <span class="card-title">📖 辩论速查卡</span>
+      </div>
+      <div class="grid-3">
+        <div>
+          <h4 style="font-size:0.9rem; color:var(--red); margin-bottom:8px;">论证结构 ARE</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6;">
+            <strong>Assertion</strong> — 断言你的观点<br>
+            <strong>Reasoning</strong> — 解释为什么<br>
+            <strong>Evidence</strong> — 提供证据支持
+          </p>
+        </div>
+        <div>
+          <h4 style="font-size:0.9rem; color:var(--blue); margin-bottom:8px;">常见逻辑谬误</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6;">
+            稻草人、滑坡谬误、虚假两难、诉诸情感、以偏概全、因果倒置
+          </p>
+        </div>
+        <div>
+          <h4 style="font-size:0.9rem; color:var(--gold); margin-bottom:8px;">质询技巧</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6;">
+            封闭式问题引导、追问前提假设、揭露矛盾、锁定对方立场
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tab 5: 新手引导 ===== -->
+  <section class="tab-panel" id="panel-guide">
+    <div class="section-header">
+      <div class="section-icon green">🎓</div>
+      <div>
+        <h1 class="section-title">新手引导</h1>
+        <p class="section-desc">从零开始了解辩论，快速上手</p>
+      </div>
+    </div>
+
+    <div class="guide-grid">
+      <div class="guide-card">
+        <h3>🏛️ 辩论基本流程</h3>
+        <ul>
+          <li><strong>立论陈词</strong>：各方一辩陈述立场和核心论点</li>
+          <li><strong>质询/驳论</strong>：针对对方论点进行质疑和反驳</li>
+          <li><strong>自由辩论</strong>：双方交替发言，自由交锋</li>
+          <li><strong>总结陈词</strong>：梳理全场，强化己方优势</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>🎯 辩位分工</h3>
+        <ul>
+          <li><strong>一辩</strong>：立论、开篇陈词，搭建框架</li>
+          <li><strong>二辩</strong>：驳论、深化论证，攻防兼备</li>
+          <li><strong>三辩</strong>：质询、总结，临场应变强</li>
+          <li><strong>四辩</strong>（如有）：总结升华，画龙点睛</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>📝 如何准备一场辩论</h3>
+        <ul>
+          <li>深入理解辩题，明确正反双方核心争议</li>
+          <li>从事实、价值、政策三个层面构建论点</li>
+          <li>预判对方可能的论点并准备反驳</li>
+          <li>收集权威数据、案例作为论据支撑</li>
+          <li>用本工具的 AI 对辩功能模拟练习</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>⚡ 辩论黄金法则</h3>
+        <ul>
+          <li>论点先行，论据跟进</li>
+          <li>攻击逻辑而非人身</li>
+          <li>多问"为什么"和"所以呢"</li>
+          <li>承认合理之处，反驳关键之处</li>
+          <li>控制时间，言简意赅</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>🔍 批判性思维框架</h3>
+        <ul>
+          <li><strong>明确问题</strong>：真正在争论什么？</li>
+          <li><strong>检验前提</strong>：双方的隐含假设是什么？</li>
+          <li><strong>评估证据</strong>：数据来源可靠吗？样本充足吗？</li>
+          <li><strong>考虑替代</strong>：有没有第三种可能？</li>
+          <li><strong>衡量后果</strong>：各方立场会带来什么影响？</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>🗣️ 表达与台风</h3>
+        <ul>
+          <li>语速适中，重点处放慢强调</li>
+          <li>善用停顿，给听众消化时间</li>
+          <li>肢体语言自然，眼神与观众/评委交流</li>
+          <li>避免口头禅（"然后""就是说"等）</li>
+          <li>即使紧张，也要表现得自信</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ===== Global State =====
+let currentUser = localStorage.getItem('debateClub_user') || '';
+let currentTab = 'events';
+let registerEventId = null;
+let registerSide = '';
+let timerInterval = null;
+let timerSeconds = 0;
+let timerRunning = false;
+let currentFormat = 'standard';
+let currentPhases = [];
+let currentPhaseIndex = 0;
+let debateFormats = {};
+let quickTimerMode = false;
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+  // Prompt for username if not set
+  if (!currentUser) {
+    const name = prompt('欢迎来到随地大小辩！\n请输入你的昵称：');
+    if (name) {
+      currentUser = name.trim();
+      localStorage.setItem('debateClub_user', currentUser);
+    }
+  }
+
+  // Tab navigation
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  });
+
+  // Load debate formats
+  fetch('/api/debate-formats')
+    .then(r => r.json())
+    .then(formats => {
+      debateFormats = formats;
+      loadTimerFormat('classic');
+    });
+
+  // Timer preset buttons
+  document.querySelectorAll('.timer-preset[data-format]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.timer-preset[data-format]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadTimerFormat(btn.dataset.format);
+    });
+  });
+
+  // Bind create event button
+  const createBtn = document.getElementById('createEventBtn');
+  if (createBtn) {
+    createBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      createEvent(this);
+    });
+  }
+
+  // Restore identity input
+  const nk = getIdentity();
+  const ii = document.getElementById('identityInput');
+  if (ii && nk) ii.value = nk;
+
+  // Load data for current tab
+  switchTab('events');
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.nav-tab[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+
+  if (tab === 'events') loadEvents();
+  else if (tab === 'topics') loadTopics();
+  else if (tab === 'prep') { loadNotes(); loadAiHistory(); updateAiEngineBadge(); }
+}
+
+// ===== Toast =====
+function showToast(msg, isError = false) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast${isError ? ' error' : ''}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3000);
+}
+
+// ===== Modal =====
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Close modals on overlay click
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('show');
+  }
+});
+
+// ===== Events (报名区) =====
+async function loadEvents() {
+  const res = await fetch('/api/events');
+  const events = await res.json();
+  const container = document.getElementById('eventsList');
+
+  if (events.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>还没有比赛，点击右上角创建第一场吧！</p></div>`;
+    return;
+  }
+
+  container.innerHTML = events.map(e => {
+    const statusLabels = { open: '报名中', ready: '已满员', ongoing: '进行中', done: '已结束' };
+    const statusClass = { open: 'badge-open', ready: 'badge-ready', ongoing: 'badge-ongoing', done: 'badge-done' };
+    const isFull = e.pro_count >= e.max_per_side && e.con_count >= e.max_per_side;
+
+    return `
+    <div class="card event-card status-${e.status}">
+      <div class="card-header">
+        <div>
+          <div class="event-topic">${e.topic}</div>
+          <div class="event-time">🕐 ${e.debate_time}</div>
+        </div>
+        <span class="badge ${statusClass[e.status]}">${statusLabels[e.status]}</span>
+      </div>
+      <div class="event-meta">
+        <span class="event-meta-item"><span class="dot pro"></span>正方 ${e.pro_count}/${e.max_per_side}</span>
+        <span class="event-meta-item"><span class="dot con"></span>反方 ${e.con_count}/${e.max_per_side}</span>
+        <span class="event-meta-item">👀 观战 ${e.watch_count}</span>
+        <span class="event-meta-item">赛制：${e.format === 'classic' ? '经典四辩' : e.format === 'standard' ? '标准' : e.format === 'quick' ? '快速' : e.format === 'bp' ? 'BP议会制' : '自定义'}</span>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        ${e.status === 'open' ? `<button class="btn btn-primary btn-sm" onclick="openRegister(${e.id})">我要报名</button>` : ''}
+        ${e.status === 'ongoing' ? `<button class="btn btn-sm btn-outline" onclick="switchTab('tools'); loadTimerFormat('${e.format}')">打开计时器</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="toggleEventDetails(${e.id}, this)">查看详情</button>
+        ${e.status === 'open' ? `<button class="btn btn-ghost btn-sm btn-danger" onclick="deleteEvent(${e.id})">删除</button>` : ''}
+      </div>
+      <div class="reg-list" id="regList_${e.id}" style="display:none;"></div>
+    </div>`;
+  }).join('');
+}
+
+async function openRegister(eventId) {
+  registerEventId = eventId;
+  registerSide = '';
+  document.getElementById('regSide').value = '';
+  document.getElementById('regName').value = currentUser || '';
+  ['sideBtnPro','sideBtnCon','sideBtnWatch'].forEach(id => document.getElementById(id).classList.remove('btn-primary'));
+  ['sideBtnPro','sideBtnCon','sideBtnWatch'].forEach(id => document.getElementById(id).classList.add('btn-secondary'));
+
+  const res = await fetch(`/api/events/${eventId}`);
+  const event = await res.json();
+  document.getElementById('registerEventInfo').innerHTML = `
+    <div class="card" style="background:var(--paper-warm); margin-bottom:1rem;">
+      <div class="event-topic">${event.topic}</div>
+      <div class="event-time">${event.debate_time}</div>
+      <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;">
+        正方 ${event.pro_count}/${event.max_per_side} · 反方 ${event.con_count}/${event.max_per_side}
+      </div>
+    </div>`;
+  openModal('registerModal');
+}
+
+function selectSide(side) {
+  registerSide = side;
+  document.getElementById('regSide').value = side;
+  ['sideBtnPro','sideBtnCon','sideBtnWatch'].forEach(id => document.getElementById(id).classList.remove('btn-primary'));
+  ['sideBtnPro','sideBtnCon','sideBtnWatch'].forEach(id => document.getElementById(id).classList.add('btn-secondary'));
+  document.getElementById(`sideBtn${side === '正方' ? 'Pro' : side === '反方' ? 'Con' : 'Watch'}`).classList.add('btn-primary');
+  document.getElementById(`sideBtn${side === '正方' ? 'Pro' : side === '反方' ? 'Con' : 'Watch'}`).classList.remove('btn-secondary');
+}
+
+async function submitRegistration() {
+  const name = document.getElementById('regName').value.trim();
+  const side = registerSide;
+  if (!name) return showToast('请输入你的名字', true);
+  if (!side) return showToast('请选择立场', true);
+
+  const res = await fetch(`/api/events/${registerEventId}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, side })
+  });
+  const data = await res.json();
+  if (data.error) return showToast(data.error, true);
+
+  currentUser = name;
+  localStorage.setItem('debateClub_user', name);
+  showToast('报名成功！');
+  closeModal('registerModal');
+  loadEvents();
+}
+
+async function deleteEvent(id) {
+  if (!confirm('确定要删除这场比赛吗？')) return;
+  await fetch(`/api/events/${id}`, { method: 'DELETE' });
+  showToast('比赛已删除');
+  loadEvents();
+}
+
+async function toggleEventDetails(eventId, btn) {
+  const listEl = document.getElementById(`regList_${eventId}`);
+  if (listEl.style.display === 'block') {
+    listEl.style.display = 'none';
+    btn.textContent = '查看详情';
+    return;
+  }
+
+  const res = await fetch(`/api/events/${eventId}`);
+  const event = await res.json();
+  const regs = event.registrations || [];
+
+  listEl.innerHTML = regs.length === 0
+    ? '<div style="padding:8px;color:var(--text-muted);font-size:0.85rem;">暂无报名</div>'
+    : regs.map(r => `
+      <div class="reg-item">
+        <span>${r.name} ${r.role !== '辩手' ? `· ${r.role}` : ''}</span>
+        <span class="side-tag ${r.side === '正方' ? 'pro' : r.side === '反方' ? 'con' : 'watch'}">${r.side}</span>
+      </div>`).join('');
+
+  listEl.style.display = 'block';
+  btn.textContent = '收起详情';
+}
+
+function openCreateEvent() {
+  document.getElementById('createTopic').value = '';
+  // Default time: tomorrow 20:00
+  const tomorrow = new Date(Date.now() + 86400000);
+  const pad = n => String(n).padStart(2, '0');
+  const defaultTime = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}T20:00`;
+  document.getElementById('createTime').value = defaultTime;
+  document.getElementById('createMaxSide').value = '4';
+  document.getElementById('createFormat').value = 'classic';
+  openModal('createEventModal');
+}
+
+async function createEvent(btn) {
+  const topic = document.getElementById('createTopic').value.trim();
+  const debate_time = document.getElementById('createTime').value;
+  const format = document.getElementById('createFormat').value;
+  const max_per_side = parseInt(document.getElementById('createMaxSide').value);
+
+  if (!topic) return showToast('请输入辩题', true);
+  if (!debate_time) return showToast('请选择比赛时间', true);
+
+  if (btn) { btn.disabled = true; btn.textContent = '创建中...'; }
+
+  try {
+    const res = await fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, debate_time, format, max_per_side })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return showToast(errData.error || `服务器错误 (${res.status})`, true);
+    }
+    const data = await res.json();
+    if (data.error) return showToast(data.error, true);
+
+    showToast('比赛创建成功！');
+    closeModal('createEventModal');
+    loadEvents();
+  } catch (err) {
+    console.error('createEvent error:', err);
+    showToast('创建失败：无法连接服务器，请检查服务是否运行', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '创建比赛'; }
+  }
+}
+
+// ===== Topics (辩题区) =====
+async function loadTopics() {
+  const res = await fetch('/api/topics');
+  const topics = await res.json();
+  const container = document.getElementById('topicsList');
+
+  if (topics.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">💡</div><p>还没有辩题，快来提交第一个吧！</p></div>`;
+    return;
+  }
+
+  container.innerHTML = topics.map((t, i) => `
+    <div class="card topic-card" style="${i === 0 ? 'border-color: var(--gold); background: var(--gold-light);' : ''}">
+      ${i === 0 ? '<div style="font-size:0.75rem;color:var(--gold);font-weight:600;margin-bottom:4px;">🏆 最高票辩题</div>' : ''}
+      <div class="topic-title">${t.title}</div>
+      <div class="topic-positions">
+        <span class="pro">正方：${t.pro_position}</span> &nbsp;|&nbsp;
+        <span class="con">反方：${t.con_position}</span>
+      </div>
+      <div class="topic-footer">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="vote-btn ${t.voted ? 'voted' : ''}" onclick="voteTopic(${t.id})" id="voteBtn_${t.id}">
+            👍 <span class="vote-count" id="voteCount_${t.id}">${t.votes}</span>
+          </button>
+          <button class="btn btn-xs btn-ghost" onclick="useAsEvent(${t.id})">作为下场比赛</button>
+        </div>
+        <span style="font-size:0.75rem;color:var(--text-muted);">由 ${t.submitter} 提交</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Check which topics user has voted for
+async function checkTopicVotes() {
+  const res = await fetch('/api/topics');
+  const topics = await res.json();
+  // In a real app, we'd track this server-side per user
+  // For now, store in localStorage
+  const votedTopics = JSON.parse(localStorage.getItem('debateClub_votedTopics') || '[]');
+  topics.forEach(t => {
+    const btn = document.getElementById(`voteBtn_${t.id}`);
+    if (btn && votedTopics.includes(t.id)) btn.classList.add('voted');
+  });
+}
+
+async function voteTopic(id) {
+  if (!currentUser) {
+    const name = prompt('请输入你的昵称：');
+    if (!name) return;
+    currentUser = name.trim();
+    localStorage.setItem('debateClub_user', currentUser);
+  }
+
+  const res = await fetch(`/api/topics/${id}/vote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ voter: currentUser })
+  });
+  const data = await res.json();
+
+  const btn = document.getElementById(`voteBtn_${id}`);
+  const count = document.getElementById(`voteCount_${id}`);
+  if (data.action === 'voted') {
+    btn.classList.add('voted');
+  } else {
+    btn.classList.remove('voted');
+  }
+  count.textContent = data.votes;
+
+  // Refresh ranking
+  setTimeout(loadTopics, 300);
+}
+
+function useAsEvent(id) {
+  switchTab('events');
+  openCreateEvent();
+  fetch(`/api/topics`).then(r => r.json()).then(topics => {
+    const t = topics.find(x => x.id === id);
+    if (t) document.getElementById('createTopic').value = t.title;
+  });
+}
+
+function openTopicModal() {
+  document.getElementById('topicTitle').value = '';
+  document.getElementById('topicPro').value = '';
+  document.getElementById('topicCon').value = '';
+  document.getElementById('topicSubmitter').value = currentUser || '';
+  openModal('topicModal');
+}
+
+async function submitTopic() {
+  const title = document.getElementById('topicTitle').value.trim();
+  const pro_position = document.getElementById('topicPro').value.trim();
+  const con_position = document.getElementById('topicCon').value.trim();
+  const submitter = document.getElementById('topicSubmitter').value.trim();
+
+  if (!title || !pro_position || !con_position || !submitter) {
+    return showToast('请填写所有字段', true);
+  }
+
+  const res = await fetch('/api/topics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, pro_position, con_position, submitter })
+  });
+  const data = await res.json();
+  if (data.error) return showToast(data.error, true);
+
+  currentUser = submitter;
+  localStorage.setItem('debateClub_user', currentUser);
+  showToast('辩题提交成功！');
+  closeModal('topicModal');
+  loadTopics();
+}
+
+// ===== Identity (私人空间) =====
+const NICK_KEY = 'debate_nickname';
+function getIdentity() { return (localStorage.getItem(NICK_KEY) || '').trim(); }
+function setIdentity(name) {
+  name = (name || '').trim();
+  if (!name) return;
+  localStorage.setItem(NICK_KEY, name);
+  const input = document.getElementById('identityInput');
+  if (input) input.value = name;
+  loadNotes();
+  loadAiHistory();
+  showToast('已切换身份：' + name);
+}
+
+// ===== Notes (准备区) =====
+let notesCache = [];
+let currentNoteTopic = ''; // 当前选中的辩题文件夹
+
+async function loadNotes() {
+  const owner = getIdentity();
+  const listEl = document.getElementById('notesList');
+  const chipsEl = document.getElementById('noteTopicChips');
+  if (!owner) {
+    if (chipsEl) chipsEl.innerHTML = '';
+    if (listEl) listEl.innerHTML = `<div class="empty-state" style="padding:2rem 1rem;"><div class="empty-icon">🔒</div><p>请先在上方输入你的昵称<br>笔记与 AI 对辩内容将仅你自己可见</p></div>`;
+    return;
+  }
+  const res = await fetch('/api/notes', { headers: { 'X-User': owner } });
+  if (res.status === 401) {
+    if (listEl) listEl.innerHTML = `<div class="empty-state" style="padding:2rem 1rem;"><div class="empty-icon">🔒</div><p>请先设置昵称</p></div>`;
+    return;
+  }
+  const allNotes = await res.json();
+  notesCache = allNotes;
+
+  // 收集所有辩题（去重）
+  const topics = [...new Set(allNotes.map(n => n.topic).filter(Boolean))];
+
+  // 渲染辩题文件夹选择栏
+  renderNoteTopicBar(topics);
+
+  // 按当前选中的辩题过滤
+  const filtered = currentNoteTopic ? allNotes.filter(n => n.topic === currentNoteTopic) : allNotes;
+  const container = document.getElementById('notesList');
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:2rem 1rem;"><div class="empty-icon">📝</div><p>${currentNoteTopic ? '该辩题下还没有笔记' : (allNotes.length === 0 ? '还没有笔记，新建一个吧' : '请选择上方的辩题文件夹')}</p></div>`;
+    return;
+  }
+
+  // 按类型分组显示
+  container.innerHTML = filtered.map(n => `
+    <div class="note-card type-${n.type}" style="padding:12px; margin-bottom:8px; border-radius:var(--radius-sm); background:var(--paper-warm);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="note-title">${n.title} ${n.side ? `<span style="font-size:0.75rem;color:${n.side==='正方'?'var(--red)':'var(--blue)'}">[${n.side}]</span>` : ''}</div>
+        <div>
+          <button class="btn btn-xs btn-ghost" onclick="editNoteById(${n.id})">编辑</button>
+          <button class="btn btn-xs btn-ghost btn-danger" onclick="deleteNote(${n.id})">删除</button>
+        </div>
+      </div>
+      ${n.content ? `<div class="note-content">${n.content}</div>` : ''}
+      <div class="note-meta">
+        <span>${n.type === 'argument' ? '论点' : n.type === 'evidence' ? '论据' : n.type === 'question' ? '质询' : '策略'}</span>
+        <span>${n.created_at}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderNoteTopicBar(topics) {
+  const bar = document.getElementById('noteTopicChips');
+  if (topics.length === 0 && !currentNoteTopic) {
+    bar.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted);">暂无分类，新建笔记时填写辩题即可自动创建文件夹</span>';
+    return;
+  }
+
+  let html = '';
+  // 全部
+  html += `<button class="btn btn-xs ${!currentNoteTopic ? 'btn-primary' : 'btn-outline'}" onclick="switchNoteTopic('')" style="font-size:0.78rem;">全部 (${notesCache.length})</button>`;
+  // 各个辩题
+  topics.forEach(t => {
+    const count = notesCache.filter(n => n.topic === t).length;
+    const active = currentNoteTopic === t;
+    html += `<button class="btn btn-xs ${active ? 'btn-primary' : 'btn-outline'}" onclick="switchNoteTopic('${t.replace(/'/g, "\\'")}')" style="font-size:0.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📂 ${t} (${count})</button>`;
+  });
+  bar.innerHTML = html;
+}
+
+function switchNoteTopic(topic) {
+  currentNoteTopic = topic;
+  loadNotes();
+}
+
+function openNoteModal(note = null) {
+  // 填充辩题下拉列表
+  const topics = [...new Set(notesCache.map(n => n.topic).filter(Boolean))];
+  const topicSelect = document.getElementById('noteTopic');
+  topicSelect.innerHTML = '<option value="">— 选择已有辩题 —</option>' +
+    topics.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  if (note) {
+    document.getElementById('noteModalTitle').textContent = '编辑笔记';
+    document.getElementById('noteEditId').value = note.id;
+    document.getElementById('noteTitle').value = note.title;
+    document.getElementById('noteContent').value = note.content;
+    document.getElementById('noteSide').value = note.side;
+    document.getElementById('noteType').value = note.type;
+    document.getElementById('noteTopic').value = note.topic || '';
+    document.getElementById('noteTopicNew').value = '';
+  } else {
+    document.getElementById('noteModalTitle').textContent = '新建笔记';
+    document.getElementById('noteEditId').value = '';
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteContent').value = '';
+    document.getElementById('noteSide').value = '';
+    document.getElementById('noteType').value = 'argument';
+    // 默认选中当前文件夹的辩题
+    document.getElementById('noteTopic').value = currentNoteTopic || '';
+    document.getElementById('noteTopicNew').value = '';
+  }
+  openModal('noteModal');
+}
+
+function editNoteById(id) {
+  const n = notesCache.find(x => x.id === id);
+  if (n) openNoteModal(n);
+}
+
+async function saveNote() {
+  const editId = document.getElementById('noteEditId').value;
+  const title = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  const side = document.getElementById('noteSide').value;
+  const type = document.getElementById('noteType').value;
+  // 辩题：优先用新输入的，其次用下拉选择的
+  const topicNew = document.getElementById('noteTopicNew').value.trim();
+  const topicSel = document.getElementById('noteTopic').value;
+  const topic = topicNew || topicSel;
+
+  if (!getIdentity()) return showToast('请先在上方设置昵称', true);
+  if (!title) return showToast('请输入标题', true);
+
+  if (editId) {
+    await fetch(`/api/notes/${editId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, side, type, topic })
+    });
+  } else {
+    await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User': getIdentity() },
+      body: JSON.stringify({ title, content, side, type, topic })
+    });
+  }
+
+  showToast('笔记已保存');
+  closeModal('noteModal');
+  loadNotes();
+}
+
+async function deleteNote(id) {
+  if (!confirm('确定删除这条笔记？')) return;
+  await fetch(`/api/notes/${id}`, { method: 'DELETE', headers: { 'X-User': getIdentity() } });
+  loadNotes();
+}
+
+// ===== AI Chat (AI 对辩) =====
+let aiChatHistory = [];
+
+async function loadAiHistory() {
+  const owner = getIdentity();
+  const container = document.getElementById('chatMessages');
+  if (!owner) { resetAiChat(); return; }
+  try {
+    const res = await fetch('/api/ai-history', { headers: { 'X-User': owner } });
+    if (res.status === 401) { resetAiChat(); return; }
+    const data = await res.json();
+    aiChatHistory = data.messages || [];
+    if (aiChatHistory.length === 0) {
+      resetAiChat();
+    } else {
+      container.innerHTML = '';
+      aiChatHistory.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'chat-message ' + m.role;
+        if (m.role === 'user') div.textContent = m.content;
+        else div.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:2px;">🤖 AI（${m.side || ''}）</div>${m.content}`;
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (e) { resetAiChat(); }
+}
+
+async function saveAiHistory(topic, side) {
+  if (!getIdentity()) return;
+  await fetch('/api/ai-history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-User': getIdentity() },
+    body: JSON.stringify({ topic, side, messages: aiChatHistory })
+  }).catch(() => {});
+}
+
+async function sendAiMessage() {
+  const topic = document.getElementById('aiTopic').value.trim();
+  const userSide = document.getElementById('aiSide').value;
+  const model = document.getElementById('aiModel').value;
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+
+  if (!topic) return showToast('请先输入辩题', true);
+  if (!message) return;
+
+  const messagesContainer = document.getElementById('chatMessages');
+
+  // Add user message
+  aiChatHistory.push({ role: 'user', content: message, side: userSide });
+  const userMsg = document.createElement('div');
+  userMsg.className = 'chat-message user';
+  userMsg.textContent = message;
+  messagesContainer.appendChild(userMsg);
+
+  // Clear input
+  input.value = '';
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  // Show typing indicator
+  const typingMsg = document.createElement('div');
+  typingMsg.className = 'chat-message ai';
+  typingMsg.innerHTML = '<span class="spinner"></span> AI 正在思考...';
+  typingMsg.id = 'typingIndicator';
+  messagesContainer.appendChild(typingMsg);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  // Call AI
+  try {
+    const res = await fetch('/api/ai-debate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, user_message: message, user_side: userSide, history: aiChatHistory, model })
+    });
+    const data = await res.json();
+
+    // Remove typing indicator
+    document.getElementById('typingIndicator')?.remove();
+
+    // Add AI message
+    aiChatHistory.push({ role: 'ai', content: data.response, side: data.ai_side });
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'chat-message ai';
+    aiMsg.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:2px;">🤖 AI（${data.ai_side}）</div>${data.response}`;
+    messagesContainer.appendChild(aiMsg);
+    saveAiHistory(topic, userSide);
+    if (data.notice) showToast(data.notice, true);
+  } catch (e) {
+    document.getElementById('typingIndicator')?.remove();
+    const errMsg = document.createElement('div');
+    errMsg.className = 'chat-message system';
+    errMsg.textContent = 'AI 暂时无法回应，请稍后再试';
+    messagesContainer.appendChild(errMsg);
+  }
+
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function resetAiChat() {
+  aiChatHistory = [];
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="chat-message system">输入辩题和你的立场，开始与 AI 模拟辩论</div>`;
+  if (getIdentity()) {
+    fetch('/api/ai-history', { method: 'DELETE', headers: { 'X-User': getIdentity() } }).catch(() => {});
+  }
+}
+
+// 更新 AI 引擎状态徽章（真实模型 or 模板兜底）
+async function updateAiEngineBadge() {
+  try {
+    const res = await fetch('/api/ai-status');
+    const d = await res.json();
+    const badge = document.getElementById('aiEngineBadge');
+    if (!badge) return;
+    if (d.configured) {
+      badge.textContent = '引擎：DeepSeek 真实模型 🟢';
+      badge.className = 'engine-badge engine-live';
+    } else {
+      badge.textContent = '引擎：模板模式（未配置 Key）';
+      badge.className = 'engine-badge engine-template';
+    }
+  } catch (e) {}
+}
+
+// ===== 语音输入（Web Speech API）=====
+let recognition = null;
+let recognizing = false;
+
+function initRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.lang = 'zh-CN';
+  r.continuous = false;       // 说一段落就结束，符合辩论节奏
+  r.interimResults = true;    // 实时显示识别中的文字
+  r.onresult = (e) => {
+    let interim = '';
+    let finalText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i];
+      if (res.isFinal) finalText += res[0].transcript;
+      else interim += res[0].transcript;
+    }
+    const input = document.getElementById('chatInput');
+    input.value = finalText || interim;
+    if (input.value.trim()) input.classList.add('voice-active');
+  };
+  r.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      showToast('麦克风权限被拒绝，请在浏览器地址栏允许麦克风访问', true);
+    } else if (e.error !== 'aborted') {
+      showToast('语音识别出错：' + e.error, true);
+    }
+    stopVoiceInput();
+  };
+  r.onend = () => {
+    const input = document.getElementById('chatInput');
+    stopVoiceInput();
+    // 识别结束后自动发送，模拟"开口辩论"的连贯感
+    if (input.value.trim()) sendAiMessage();
+  };
+  return r;
+}
+
+function toggleVoiceInput() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    showToast('当前浏览器不支持语音输入，请使用 Chrome 或 Edge 浏览器', true);
+    return;
+  }
+  if (recognizing) { stopVoiceInput(); return; }
+
+  if (!recognition) recognition = initRecognition();
+  if (!recognition) { showToast('语音识别初始化失败', true); return; }
+
+  const input = document.getElementById('chatInput');
+  input.value = '';
+  input.placeholder = '正在聆听... 请开口辩论，说完会自动发送';
+  input.classList.add('voice-active');
+
+  try {
+    recognition.start();
+    recognizing = true;
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('recording');
+    btn.textContent = '⏹';
+    showToast('🎤 已开启麦克风，请开始说');
+  } catch (e) {
+    stopVoiceInput();
+    showToast('无法启动麦克风：' + e.message, true);
+  }
+}
+
+function stopVoiceInput() {
+  recognizing = false;
+  if (recognition) { try { recognition.stop(); } catch (e) {} }
+  const btn = document.getElementById('micBtn');
+  if (btn) { btn.classList.remove('recording'); btn.textContent = '🎤'; }
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.placeholder = '输入你的论点...（或点🎤语音）';
+    input.classList.remove('voice-active');
+  }
+}
+
+// ===== Timer (辩论工具) =====
+function loadTimerFormat(format) {
+  currentFormat = format;
+  if (quickTimerMode) {
+    // Keep quick timer settings
+    return;
+  }
+
+  if (!debateFormats[format]) return;
+
+  currentPhases = [...debateFormats[format].phases];
+  currentPhaseIndex = 0;
+  resetTimerState();
+  renderPhaseList();
+}
+
+function resetTimerState() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  quickTimerMode = false;
+  if (currentPhases.length > 0) {
+    timerSeconds = currentPhases[0].duration;
+  } else {
+    timerSeconds = 0;
+  }
+  updateTimerDisplay();
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 开始';
+  document.getElementById('btnTimerPause').style.display = 'none';
+  renderPhaseList();
+}
+
+function renderPhaseList() {
+  const list = document.getElementById('phaseList');
+  const progress = document.getElementById('phaseProgress');
+
+  if (currentPhases.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">尚未加载赛制</div>';
+    progress.textContent = '';
+    return;
+  }
+
+  progress.textContent = `${currentPhaseIndex + 1} / ${currentPhases.length}`;
+
+  list.innerHTML = currentPhases.map((p, i) => {
+    let cls = '';
+    if (i < currentPhaseIndex) cls = 'done';
+    else if (i === currentPhaseIndex) cls = 'current';
+    const mins = Math.floor(p.duration / 60);
+    const secs = p.duration % 60;
+    return `
+    <div class="phase-item ${cls}">
+      <span>${i + 1}. ${p.name} ${p.speaker ? `(${p.speaker})` : ''}</span>
+      <span class="phase-dur">${mins}:${secs.toString().padStart(2, '0')}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateTimerDisplay() {
+  const clock = document.getElementById('timerClock');
+  const mins = Math.floor(timerSeconds / 60);
+  const secs = timerSeconds % 60;
+  clock.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+  // Color coding
+  clock.classList.remove('warning', 'danger');
+  if (timerRunning) {
+    if (timerSeconds <= 10) clock.classList.add('danger');
+    else if (timerSeconds <= 30) clock.classList.add('warning');
+  }
+
+  // Phase info
+  if (currentPhases.length > 0 && currentPhaseIndex < currentPhases.length) {
+    const phase = currentPhases[currentPhaseIndex];
+    document.getElementById('timerPhase').textContent = phase.name;
+    document.getElementById('timerSpeaker').textContent = phase.speaker ? `发言：${phase.speaker}` : '';
+
+    const sideEl = document.getElementById('timerSide');
+    sideEl.textContent = phase.side;
+    sideEl.className = 'timer-side ' + (phase.side === '正方' ? 'pro' : phase.side === '反方' ? 'con' : 'both');
+  }
+}
+
+function toggleTimer() {
+  if (currentPhases.length === 0 && !quickTimerMode) {
+    showToast('请先选择赛制', true);
+    return;
+  }
+
+  if (timerRunning) {
+    pauseTimer();
+  } else {
+    startTimer();
+  }
+}
+
+function startTimer() {
+  if (timerSeconds <= 0) {
+    // Move to next phase if available
+    if (currentPhaseIndex < currentPhases.length - 1) {
+      nextPhase();
+      startTimer();
+      return;
+    }
+    showToast('所有环节已完成');
+    return;
+  }
+
+  timerRunning = true;
+  document.getElementById('btnTimerStart').style.display = 'none';
+  document.getElementById('btnTimerPause').style.display = '';
+
+  // Play start sound using Web Audio API
+  playBeep(800, 0.1);
+  setTimeout(() => playBeep(1000, 0.1), 150);
+
+  updateTimerDisplay();
+  renderPhaseList();
+
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+
+    if (timerSeconds === 30) playBeep(600, 0.05);
+    if (timerSeconds === 10) playBeep(500, 0.08);
+    if (timerSeconds <= 5 && timerSeconds > 0) playBeep(400, 0.1);
+
+    if (timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      playBeep(300, 0.3);
+      setTimeout(() => playBeep(200, 0.5), 300);
+
+      document.getElementById('btnTimerStart').style.display = '';
+      document.getElementById('btnTimerStart').textContent = '▶ 下一环节';
+      document.getElementById('btnTimerPause').style.display = 'none';
+      updateTimerDisplay();
+      renderPhaseList();
+
+      // Auto-advance after 2 seconds
+      if (!quickTimerMode) {
+        setTimeout(() => {
+          if (currentPhaseIndex < currentPhases.length - 1) {
+            nextPhase();
+          }
+        }, 2000);
+      }
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 继续';
+  document.getElementById('btnTimerPause').style.display = 'none';
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  quickTimerMode = false;
+
+  if (currentPhases.length > 0) {
+    currentPhaseIndex = 0;
+    timerSeconds = currentPhases[0].duration;
+  } else {
+    timerSeconds = 0;
+  }
+
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 开始';
+  document.getElementById('btnTimerPause').style.display = 'none';
+  updateTimerDisplay();
+  renderPhaseList();
+}
+
+function nextPhase() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+
+  if (currentPhaseIndex < currentPhases.length - 1) {
+    currentPhaseIndex++;
+    timerSeconds = currentPhases[currentPhaseIndex].duration;
+  }
+
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 开始';
+  document.getElementById('btnTimerPause').style.display = 'none';
+  updateTimerDisplay();
+  renderPhaseList();
+}
+
+function prevPhase() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+
+  if (currentPhaseIndex > 0) {
+    currentPhaseIndex--;
+    timerSeconds = currentPhases[currentPhaseIndex].duration;
+  }
+
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 开始';
+  document.getElementById('btnTimerPause').style.display = 'none';
+  updateTimerDisplay();
+  renderPhaseList();
+}
+
+function quickTimer(seconds) {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  quickTimerMode = true;
+  timerSeconds = seconds;
+  currentPhases = [];
+  currentPhaseIndex = 0;
+
+  document.getElementById('timerPhase').textContent = '快速计时';
+  document.getElementById('timerSpeaker').textContent = '';
+  document.getElementById('timerSide').textContent = '';
+  document.getElementById('timerSide').className = 'timer-side';
+  document.getElementById('phaseProgress').textContent = '';
+  document.getElementById('phaseList').innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">快速计时模式</div>';
+
+  document.getElementById('btnTimerStart').style.display = '';
+  document.getElementById('btnTimerStart').textContent = '▶ 开始';
+  document.getElementById('btnTimerPause').style.display = 'none';
+
+  // Deselect format presets
+  document.querySelectorAll('.timer-preset[data-format]').forEach(b => b.classList.remove('active'));
+
+  updateTimerDisplay();
+}
+
+// Web Audio API for beeps
+let audioCtx = null;
+function playBeep(freq, duration) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "debate-club",
+  "version": "1.0.0",
+  "description": "随地大小辩 - 网络辩论赛小工具",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
