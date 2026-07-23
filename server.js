@@ -37,6 +37,9 @@ function loadDb() {
 }
 
 function saveDb(db) {
+  try {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  } catch (e) { /* 目录已存在则忽略 */ }
   fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
 }
 

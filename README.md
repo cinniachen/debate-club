@@ -94,3 +94,24 @@ debate-club/
 | POST | `/api/ai-debate` | AI 模拟对辩（模板或 DeepSeek） |
 | GET | `/api/ai-status` | 返回是否已配置 DeepSeek Key |
 | GET | `/api/debate-formats` | 赛制与计时方案 |
+
+## 🌐 部署到 Railway（推荐给朋友用）
+
+本工具用 JSON 文件存数据。Railway 免费层支持挂载**持久卷（Volume）**，把数据目录挂上去即可持久化，几乎不用改代码。
+
+### 步骤
+1. 把代码推到 GitHub（本仓库已建好 `debate-club`）
+2. 打开 [railway.app](https://railway.app)，用 GitHub 登录 → **New Project** → **Deploy from GitHub repo** → 选 `debate-club`
+3. Railway 会自动执行 `npm install` + `node server.js`（构建/启动命令见 `railway.toml`）
+4. 在 Railway 项目里 **Add Volume**，挂载路径填 **`/app/data`**（比赛/辩题/笔记数据就持久保存，重启不丢）
+5. 在 **Variables** 里加 `DEEPSEEK_API_KEY` = 你的真实 Key（不填也能跑，AI 对辩回退模板）
+6. 部署完成后 Railway 会给一个 `xxx.up.railway.app` 域名，发给朋友即可访问
+
+### 要点
+- **端口**：Railway 会自动注入 `PORT`，`server.js` 已兼容，无需改动
+- **数据持久化**：靠第 4 步的 Volume（挂到 `/app/data`）；不挂则重启后数据丢失
+- **HTTPS**：Railway 自动提供，因此 AI 对辩的🎤语音输入在线上也能用
+- **密钥**：`.env` 不进仓库，`DEEPSEEK_API_KEY` 请在 Railway 的 Variables 里填
+- **免费额度**：足够小团体使用；长期无访问可能休眠，再访问会自动唤醒（约几十秒）
+
+> 备选：Render 免费层文件系统是临时的（重启丢数据），无持久磁盘，故不推荐直接用；若用 Render 需改接外部数据库。
