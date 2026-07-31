@@ -11,7 +11,7 @@ try {
       process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
     }
   });
-} catch (e) { /* 没有 .env 文件也没关系，走模板兜底 */ }
+} catch (e) { /* 没有 .env 文件也没关系，走模板兜底 / 环境变量 */ }
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -24,7 +24,26 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ===== Simple JSON File Database =====
+// 是否使用真实数据库：配置了 DATABASE_URL 走 Postgres，否则回退本地 JSON 文件
+const USE_PG = !!process.env.DATABASE_URL;
+
+// 统一抛出带状态码的错误
+function httpError(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
+
+// 日期格式化为可读字符串（与前端显示兼容）
+function fmtDate(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())} ${p(dt.getHours())}:${p(dt.getMinutes())}:${p(dt.getSeconds())}`;
+}
+
+// ============================================================
+// JSON 文件存储（本地开发回退，保持本机 3456 可用）
+// ============================================================
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
 
 function loadDb() {
@@ -43,266 +62,537 @@ function saveDb(db) {
   fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
 }
 
-let nextId = 1;
-function genId(db) {
-  return nextId++;
+function createJsonStorage() {
+  return {
+    async listEvents() {
+      const db = loadDb();
+      const events = db.events.map(e => ({
+        ...e,
+        pro_count: db.registrations.filter(r => r.event_id === e.id && r.side === '正方').length,
+        con_count: db.registrations.filter(r => r.event_id === e.id && r.side === '反方').length,
+        watch_count: db.registrations.filter(r => r.event_id === e.id && r.side === '观战').length,
+      }));
+      events.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return events;
+    },
+    async getEvent(id) {
+      const db = loadDb();
+      const event = db.events.find(e => e.id === id);
+      if (!event) return null;
+      const registrations = db.registrations.filter(r => r.event_id === event.id);
+      return {
+        ...event,
+        pro_count: registrations.filter(r => r.side === '正方').length,
+        con_count: registrations.filter(r => r.side === '反方').length,
+        registrations: registrations.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      };
+    },
+    async createEvent({ topic, debate_time, format, max_per_side }) {
+      const db = loadDb();
+      const event = {
+        id: Date.now(),
+        topic, debate_time,
+        format: format || 'standard',
+        max_per_side: max_per_side || 3,
+        status: 'open',
+        created_at: fmtDate(new Date()),
+      };
+      db.events.push(event);
+      saveDb(db);
+      return { id: event.id };
+    },
+    async register({ eventId, name, side, role }) {
+      const db = loadDb();
+      const event = db.events.find(e => e.id === eventId);
+      if (!event) throw httpError(404, 'Event not found');
+      if (event.status !== 'open') throw httpError(400, '该比赛已关闭报名');
+      if (db.registrations.find(r => r.event_id === event.id && r.name === name)) {
+        throw httpError(400, '你已报名该比赛');
+      }
+      if (side === '正方' || side === '反方') {
+        const count = db.registrations.filter(r => r.event_id === event.id && r.side === side).length;
+        if (count >= event.max_per_side) throw httpError(400, `${side}已满员`);
+      }
+      db.registrations.push({
+        id: Date.now(), event_id: event.id, name, side,
+        role: role || '辩手', created_at: fmtDate(new Date()),
+      });
+      const pro = db.registrations.filter(r => r.event_id === event.id && r.side === '正方').length;
+      const con = db.registrations.filter(r => r.event_id === event.id && r.side === '反方').length;
+      if (pro >= event.max_per_side && con >= event.max_per_side) event.status = 'ready';
+      saveDb(db);
+      return { success: true };
+    },
+    async deleteEvent(id) {
+      const db = loadDb();
+      db.registrations = db.registrations.filter(r => r.event_id !== id);
+      db.events = db.events.filter(e => e.id !== id);
+      saveDb(db);
+      return { success: true };
+    },
+    async listTopics() {
+      const db = loadDb();
+      return db.topics.sort((a, b) => b.votes - a.votes || new Date(b.created_at) - new Date(a.created_at));
+    },
+    async createTopic({ title, pro_position, con_position, submitter }) {
+      const db = loadDb();
+      const topic = {
+        id: Date.now(), title, pro_position, con_position, submitter,
+        votes: 0, created_at: fmtDate(new Date()),
+      };
+      db.topics.push(topic);
+      saveDb(db);
+      return { id: topic.id };
+    },
+    async voteTopic({ topicId, voter }) {
+      const db = loadDb();
+      const topic = db.topics.find(t => t.id === topicId);
+      if (!topic) throw httpError(404, 'Topic not found');
+      const existing = db.topic_votes.find(v => v.topic_id === topic.id && v.voter === voter);
+      if (existing) {
+        db.topic_votes = db.topic_votes.filter(v => !(v.topic_id === topic.id && v.voter === voter));
+        topic.votes = Math.max(0, topic.votes - 1);
+        saveDb(db);
+        return { action: 'unvoted', votes: topic.votes };
+      } else {
+        db.topic_votes.push({ id: Date.now(), topic_id: topic.id, voter, created_at: new Date().toISOString() });
+        topic.votes += 1;
+        saveDb(db);
+        return { action: 'voted', votes: topic.votes };
+      }
+    },
+    async deleteTopic(id) {
+      const db = loadDb();
+      db.topic_votes = db.topic_votes.filter(v => v.topic_id !== id);
+      db.topics = db.topics.filter(t => t.id !== id);
+      saveDb(db);
+      return { success: true };
+    },
+    async listNotes(owner, topic) {
+      const db = loadDb();
+      let notes = db.notes.filter(n => n.owner === owner);
+      if (topic) notes = notes.filter(n => n.topic === topic);
+      notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return notes;
+    },
+    async createNote({ owner, event_id, topic, title, content, side, type }) {
+      const db = loadDb();
+      const note = {
+        id: Date.now(), owner,
+        event_id: event_id || null, topic: topic || null, title,
+        content: content || '', side: side || null, type: type || 'argument',
+        created_at: fmtDate(new Date()), updated_at: fmtDate(new Date()),
+      };
+      db.notes.push(note);
+      saveDb(db);
+      return { id: note.id };
+    },
+    async updateNote({ id, owner, title, content, side, type, topic }) {
+      const db = loadDb();
+      const note = db.notes.find(n => n.id === id);
+      if (!note) throw httpError(404, 'Note not found');
+      if (note.owner !== owner) throw httpError(403, '无权操作');
+      note.title = title; note.content = content; note.side = side; note.type = type;
+      if (topic !== undefined) note.topic = topic;
+      note.updated_at = fmtDate(new Date());
+      saveDb(db);
+      return { success: true };
+    },
+    async deleteNote({ id, owner }) {
+      const db = loadDb();
+      const note = db.notes.find(n => n.id === id);
+      if (!note) throw httpError(404, 'Note not found');
+      if (note.owner !== owner) throw httpError(403, '无权操作');
+      db.notes = db.notes.filter(n => n.id !== id);
+      saveDb(db);
+      return { success: true };
+    },
+    async getAiHistory(owner) {
+      const db = loadDb();
+      const h = (db.ai_history || []).find(x => x.owner === owner);
+      return h ? { topic: h.topic, side: h.side, messages: h.messages } : { messages: [] };
+    },
+    async saveAiHistory({ owner, topic, side, messages }) {
+      const db = loadDb();
+      db.ai_history = db.ai_history || [];
+      const h = db.ai_history.find(x => x.owner === owner);
+      if (h) { h.topic = topic; h.side = side; h.messages = messages; }
+      else db.ai_history.push({ owner, topic, side, messages });
+      saveDb(db);
+      return { success: true };
+    },
+    async deleteAiHistory(owner) {
+      const db = loadDb();
+      db.ai_history = db.ai_history || [];
+      db.ai_history = db.ai_history.filter(x => x.owner !== owner);
+      saveDb(db);
+      return { success: true };
+    },
+  };
 }
 
+// ============================================================
+// Postgres 存储（部署到 Railway 等平台，数据真正持久化）
+// ============================================================
+let pool = null;
+
+async function initPg() {
+  const { Pool } = require('pg');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      topic TEXT NOT NULL,
+      debate_time TEXT,
+      format TEXT DEFAULT 'standard',
+      max_per_side INT DEFAULT 3,
+      status TEXT DEFAULT 'open',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS registrations (
+      id SERIAL PRIMARY KEY,
+      event_id INT REFERENCES events(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      side TEXT NOT NULL,
+      role TEXT DEFAULT '辩手',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS topics (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      pro_position TEXT,
+      con_position TEXT,
+      submitter TEXT,
+      votes INT DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS topic_votes (
+      id SERIAL PRIMARY KEY,
+      topic_id INT REFERENCES topics(id) ON DELETE CASCADE,
+      voter TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(topic_id, voter)
+    );
+    CREATE TABLE IF NOT EXISTS notes (
+      id SERIAL PRIMARY KEY,
+      owner TEXT NOT NULL,
+      event_id INT,
+      topic TEXT,
+      title TEXT NOT NULL,
+      content TEXT DEFAULT '',
+      side TEXT,
+      type TEXT DEFAULT 'argument',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS ai_history (
+      owner TEXT PRIMARY KEY,
+      topic TEXT,
+      side TEXT,
+      messages JSONB DEFAULT '[]'::jsonb,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+}
+
+// Postgres 查询时把时间字段格式化为可读字符串（上海时区）
+const TS = "to_char(created_at AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS created_at";
+
+function createPgStorage() {
+  const num = (v) => parseInt(v, 10) || 0;
+  return {
+    async listEvents() {
+      const { rows } = await pool.query(`
+        SELECT e.id, e.topic, e.debate_time, e.format, e.max_per_side, e.status,
+               ${TS},
+               COUNT(r.id) FILTER (WHERE r.side='正方') AS pro_count,
+               COUNT(r.id) FILTER (WHERE r.side='反方') AS con_count,
+               COUNT(r.id) FILTER (WHERE r.side='观战') AS watch_count
+        FROM events e LEFT JOIN registrations r ON r.event_id = e.id
+        GROUP BY e.id ORDER BY e.created_at DESC
+      `);
+      return rows.map(r => ({
+        ...r, id: num(r.id), max_per_side: num(r.max_per_side),
+        pro_count: num(r.pro_count), con_count: num(r.con_count), watch_count: num(r.watch_count),
+      }));
+    },
+    async getEvent(id) {
+      const ev = await pool.query(`
+        SELECT id, topic, debate_time, format, max_per_side, status, ${TS}
+        FROM events WHERE id=$1
+      `, [id]);
+      if (ev.rowCount === 0) return null;
+      const r = ev.rows[0];
+      const regs = await pool.query(`
+        SELECT id, event_id, name, side, role, ${TS}
+        FROM registrations WHERE event_id=$1 ORDER BY created_at ASC
+      `, [id]);
+      const pro = regs.rows.filter(x => x.side === '正方').length;
+      const con = regs.rows.filter(x => x.side === '反方').length;
+      return {
+        ...r, id: num(r.id), max_per_side: num(r.max_per_side),
+        pro_count: pro, con_count: con,
+        registrations: regs.rows.map(x => ({ ...x, id: num(x.id), event_id: num(x.event_id) })),
+      };
+    },
+    async createEvent({ topic, debate_time, format, max_per_side }) {
+      const { rows } = await pool.query(`
+        INSERT INTO events (topic, debate_time, format, max_per_side)
+        VALUES ($1,$2,$3,$4) RETURNING id
+      `, [topic, debate_time, format || 'standard', max_per_side || 3]);
+      return { id: num(rows[0].id) };
+    },
+    async register({ eventId, name, side, role }) {
+      const ev = await pool.query('SELECT id, max_per_side, status FROM events WHERE id=$1', [eventId]);
+      if (ev.rowCount === 0) throw httpError(404, 'Event not found');
+      const event = ev.rows[0];
+      if (event.status !== 'open') throw httpError(400, '该比赛已关闭报名');
+      const dup = await pool.query('SELECT 1 FROM registrations WHERE event_id=$1 AND name=$2', [eventId, name]);
+      if (dup.rowCount > 0) throw httpError(400, '你已报名该比赛');
+      if (side === '正方' || side === '反方') {
+        const c = await pool.query(
+          "SELECT COUNT(*) FROM registrations WHERE event_id=$1 AND side=$2", [eventId, side]);
+        if (num(c.rows[0].count) >= num(event.max_per_side)) throw httpError(400, `${side}已满员`);
+      }
+      await pool.query(
+        'INSERT INTO registrations (event_id, name, side, role) VALUES ($1,$2,$3,$4)',
+        [eventId, name, side, role || '辩手']);
+      const counts = await pool.query(
+        "SELECT COUNT(*) FILTER (WHERE side='正方') AS pro, COUNT(*) FILTER (WHERE side='反方') AS con FROM registrations WHERE event_id=$1",
+        [eventId]);
+      const pro = num(counts.rows[0].pro), con = num(counts.rows[0].con);
+      if (pro >= num(event.max_per_side) && con >= num(event.max_per_side)) {
+        await pool.query("UPDATE events SET status='ready' WHERE id=$1", [eventId]);
+      }
+      return { success: true };
+    },
+    async deleteEvent(id) {
+      await pool.query('DELETE FROM events WHERE id=$1', [id]);
+      return { success: true };
+    },
+    async listTopics() {
+      const { rows } = await pool.query(`
+        SELECT id, title, pro_position, con_position, submitter, votes, ${TS}
+        FROM topics ORDER BY votes DESC, created_at DESC
+      `);
+      return rows.map(r => ({ ...r, id: num(r.id), votes: num(r.votes) }));
+    },
+    async createTopic({ title, pro_position, con_position, submitter }) {
+      const { rows } = await pool.query(`
+        INSERT INTO topics (title, pro_position, con_position, submitter)
+        VALUES ($1,$2,$3,$4) RETURNING id
+      `, [title, pro_position, con_position, submitter]);
+      return { id: num(rows[0].id) };
+    },
+    async voteTopic({ topicId, voter }) {
+      const tp = await pool.query('SELECT id FROM topics WHERE id=$1', [topicId]);
+      if (tp.rowCount === 0) throw httpError(404, 'Topic not found');
+      const ex = await pool.query('SELECT 1 FROM topic_votes WHERE topic_id=$1 AND voter=$2', [topicId, voter]);
+      let action;
+      if (ex.rowCount > 0) {
+        await pool.query('DELETE FROM topic_votes WHERE topic_id=$1 AND voter=$2', [topicId, voter]);
+        await pool.query('UPDATE topics SET votes = GREATEST(0, votes-1) WHERE id=$1', [topicId]);
+        action = 'unvoted';
+      } else {
+        await pool.query('INSERT INTO topic_votes (topic_id, voter) VALUES ($1,$2)', [topicId, voter]);
+        await pool.query('UPDATE topics SET votes = votes+1 WHERE id=$1', [topicId]);
+        action = 'voted';
+      }
+      const v = await pool.query('SELECT votes FROM topics WHERE id=$1', [topicId]);
+      return { action, votes: num(v.rows[0].votes) };
+    },
+    async deleteTopic(id) {
+      await pool.query('DELETE FROM topics WHERE id=$1', [id]);
+      return { success: true };
+    },
+    async listNotes(owner, topic) {
+      let sql = `SELECT id, owner, event_id, topic, title, content, side, type, ${TS} AS created_at,
+                        to_char(updated_at AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS updated_at
+                 FROM notes WHERE owner=$1`;
+      const params = [owner];
+      if (topic) { sql += ' AND topic=$2'; params.push(topic); }
+      sql += ' ORDER BY created_at DESC';
+      const { rows } = await pool.query(sql, params);
+      return rows.map(r => ({ ...r, id: num(r.id), event_id: r.event_id == null ? null : num(r.event_id) }));
+    },
+    async createNote({ owner, event_id, topic, title, content, side, type }) {
+      const { rows } = await pool.query(`
+        INSERT INTO notes (owner, event_id, topic, title, content, side, type)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id
+      `, [owner, event_id || null, topic || null, title, content || '', side || null, type || 'argument']);
+      return { id: num(rows[0].id) };
+    },
+    async updateNote({ id, owner, title, content, side, type, topic }) {
+      const cur = await pool.query('SELECT owner FROM notes WHERE id=$1', [id]);
+      if (cur.rowCount === 0) throw httpError(404, 'Note not found');
+      if (cur.rows[0].owner !== owner) throw httpError(403, '无权操作');
+      await pool.query(`
+        UPDATE notes SET title=$1, content=$2, side=$3, type=$4, topic=$5, updated_at=NOW()
+        WHERE id=$6
+      `, [title, content, side, type, topic, id]);
+      return { success: true };
+    },
+    async deleteNote({ id, owner }) {
+      const cur = await pool.query('SELECT owner FROM notes WHERE id=$1', [id]);
+      if (cur.rowCount === 0) throw httpError(404, 'Note not found');
+      if (cur.rows[0].owner !== owner) throw httpError(403, '无权操作');
+      await pool.query('DELETE FROM notes WHERE id=$1', [id]);
+      return { success: true };
+    },
+    async getAiHistory(owner) {
+      const { rows } = await pool.query('SELECT topic, side, messages FROM ai_history WHERE owner=$1', [owner]);
+      if (rows.length === 0) return { messages: [] };
+      return { topic: rows[0].topic, side: rows[0].side, messages: rows[0].messages || [] };
+    },
+    async saveAiHistory({ owner, topic, side, messages }) {
+      await pool.query(`
+        INSERT INTO ai_history (owner, topic, side, messages)
+        VALUES ($1,$2,$3,$4)
+        ON CONFLICT (owner) DO UPDATE SET topic=$2, side=$3, messages=$4, updated_at=NOW()
+      `, [owner, topic, side, JSON.stringify(messages)]);
+      return { success: true };
+    },
+    async deleteAiHistory(owner) {
+      await pool.query('DELETE FROM ai_history WHERE owner=$1', [owner]);
+      return { success: true };
+    },
+  };
+}
+
+const storage = USE_PG ? createPgStorage() : createJsonStorage();
+
+// ===== 身份辅助 =====
 function getOwner(req) {
   const u = req.headers['x-user'];
   return u ? decodeURIComponent(u) : null;
 }
 
 // ===== Events API =====
-
-app.get('/api/events', (req, res) => {
-  const db = loadDb();
-  const events = db.events.map(e => ({
-    ...e,
-    pro_count: db.registrations.filter(r => r.event_id === e.id && r.side === '正方').length,
-    con_count: db.registrations.filter(r => r.event_id === e.id && r.side === '反方').length,
-    watch_count: db.registrations.filter(r => r.event_id === e.id && r.side === '观战').length,
-  }));
-  events.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  res.json(events);
+app.get('/api/events', async (req, res) => {
+  try { res.json(await storage.listEvents()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/events/:id', (req, res) => {
-  const db = loadDb();
-  const event = db.events.find(e => e.id === parseInt(req.params.id));
-  if (!event) return res.status(404).json({ error: 'Event not found' });
-
-  const registrations = db.registrations.filter(r => r.event_id === event.id);
-  res.json({
-    ...event,
-    pro_count: registrations.filter(r => r.side === '正方').length,
-    con_count: registrations.filter(r => r.side === '反方').length,
-    registrations: registrations.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
-  });
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    const ev = await storage.getEvent(parseInt(req.params.id));
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
+    res.json(ev);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/events', (req, res) => {
-  const { topic, debate_time, format, max_per_side } = req.body;
-  if (!topic || !debate_time) return res.status(400).json({ error: '辩题和时间不能为空' });
-
-  const db = loadDb();
-  const event = {
-    id: genId(db),
-    topic,
-    debate_time,
-    format: format || 'standard',
-    max_per_side: max_per_side || 3,
-    status: 'open',
-    created_at: new Date().toLocaleString('zh-CN', { hour12: false }),
-  };
-  db.events.push(event);
-  saveDb(db);
-  res.json({ id: event.id, success: true });
+app.post('/api/events', async (req, res) => {
+  try {
+    const { topic, debate_time, format, max_per_side } = req.body;
+    if (!topic || !debate_time) return res.status(400).json({ error: '辩题和时间不能为空' });
+    const { id } = await storage.createEvent({ topic, debate_time, format, max_per_side });
+    res.json({ id, success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
-app.post('/api/events/:id/register', (req, res) => {
-  const { name, side, role } = req.body;
-  if (!name || !side) return res.status(400).json({ error: '姓名和立场不能为空' });
-
-  const db = loadDb();
-  const event = db.events.find(e => e.id === parseInt(req.params.id));
-  if (!event) return res.status(404).json({ error: 'Event not found' });
-  if (event.status !== 'open') return res.status(400).json({ error: '该比赛已关闭报名' });
-
-  if (db.registrations.find(r => r.event_id === event.id && r.name === name)) {
-    return res.status(400).json({ error: '你已报名该比赛' });
-  }
-
-  if (side === '正方' || side === '反方') {
-    const count = db.registrations.filter(r => r.event_id === event.id && r.side === side).length;
-    if (count >= event.max_per_side) return res.status(400).json({ error: `${side}已满员` });
-  }
-
-  const reg = {
-    id: genId(db),
-    event_id: event.id,
-    name,
-    side,
-    role: role || '辩手',
-    created_at: new Date().toLocaleString('zh-CN', { hour12: false }),
-  };
-  db.registrations.push(reg);
-
-  const proCount = db.registrations.filter(r => r.event_id === event.id && r.side === '正方').length;
-  const conCount = db.registrations.filter(r => r.event_id === event.id && r.side === '反方').length;
-  if (proCount >= event.max_per_side && conCount >= event.max_per_side) {
-    event.status = 'ready';
-  }
-
-  saveDb(db);
-  res.json({ success: true });
+app.post('/api/events/:id/register', async (req, res) => {
+  try {
+    const { name, side, role } = req.body;
+    if (!name || !side) return res.status(400).json({ error: '姓名和立场不能为空' });
+    const result = await storage.register({ eventId: parseInt(req.params.id), name, side, role });
+    res.json(result);
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
-app.delete('/api/events/:id', (req, res) => {
-  const db = loadDb();
-  const eid = parseInt(req.params.id);
-  db.registrations = db.registrations.filter(r => r.event_id !== eid);
-  db.events = db.events.filter(e => e.id !== eid);
-  saveDb(db);
-  res.json({ success: true });
+app.delete('/api/events/:id', async (req, res) => {
+  try { res.json(await storage.deleteEvent(parseInt(req.params.id))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== Topics API =====
-
-app.get('/api/topics', (req, res) => {
-  const db = loadDb();
-  const topics = db.topics.sort((a, b) => b.votes - a.votes || new Date(b.created_at) - new Date(a.created_at));
-  res.json(topics);
+app.get('/api/topics', async (req, res) => {
+  try { res.json(await storage.listTopics()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/topics', (req, res) => {
-  const { title, pro_position, con_position, submitter } = req.body;
-  if (!title || !pro_position || !con_position || !submitter) {
-    return res.status(400).json({ error: '请填写完整信息' });
-  }
-  const db = loadDb();
-  const topic = {
-    id: genId(db),
-    title,
-    pro_position,
-    con_position,
-    submitter,
-    votes: 0,
-    created_at: new Date().toLocaleString('zh-CN', { hour12: false }),
-  };
-  db.topics.push(topic);
-  saveDb(db);
-  res.json({ id: topic.id, success: true });
+app.post('/api/topics', async (req, res) => {
+  try {
+    const { title, pro_position, con_position, submitter } = req.body;
+    if (!title || !pro_position || !con_position || !submitter) {
+      return res.status(400).json({ error: '请填写完整信息' });
+    }
+    const { id } = await storage.createTopic({ title, pro_position, con_position, submitter });
+    res.json({ id, success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/topics/:id/vote', (req, res) => {
-  const { voter } = req.body;
-  if (!voter) return res.status(400).json({ error: '请提供投票人名称' });
-
-  const db = loadDb();
-  const topic = db.topics.find(t => t.id === parseInt(req.params.id));
-  if (!topic) return res.status(404).json({ error: 'Topic not found' });
-
-  const existing = db.topic_votes.find(v => v.topic_id === topic.id && v.voter === voter);
-  if (existing) {
-    db.topic_votes = db.topic_votes.filter(v => !(v.topic_id === topic.id && v.voter === voter));
-    topic.votes = Math.max(0, topic.votes - 1);
-    saveDb(db);
-    res.json({ action: 'unvoted', votes: topic.votes });
-  } else {
-    db.topic_votes.push({ id: genId(db), topic_id: topic.id, voter, created_at: new Date().toISOString() });
-    topic.votes += 1;
-    saveDb(db);
-    res.json({ action: 'voted', votes: topic.votes });
-  }
+app.post('/api/topics/:id/vote', async (req, res) => {
+  try {
+    const { voter } = req.body;
+    if (!voter) return res.status(400).json({ error: '请提供投票人名称' });
+    res.json(await storage.voteTopic({ topicId: parseInt(req.params.id), voter }));
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
-app.delete('/api/topics/:id', (req, res) => {
-  const db = loadDb();
-  const tid = parseInt(req.params.id);
-  db.topic_votes = db.topic_votes.filter(v => v.topic_id !== tid);
-  db.topics = db.topics.filter(t => t.id !== tid);
-  saveDb(db);
-  res.json({ success: true });
+app.delete('/api/topics/:id', async (req, res) => {
+  try { res.json(await storage.deleteTopic(parseInt(req.params.id))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== Prep Notes API =====
-
-app.get('/api/notes', (req, res) => {
+app.get('/api/notes', async (req, res) => {
   const owner = getOwner(req);
   if (!owner) return res.status(401).json({ error: 'NEED_AUTH' });
-  const db = loadDb();
-  let notes = db.notes.filter(n => n.owner === owner);
-  if (req.query.topic) {
-    notes = notes.filter(n => n.topic === req.query.topic);
-  }
-  notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  res.json(notes);
+  try {
+    res.json(await storage.listNotes(owner, req.query.topic));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/notes', (req, res) => {
+app.post('/api/notes', async (req, res) => {
   const owner = getOwner(req);
   if (!owner) return res.status(401).json({ error: 'NEED_AUTH' });
   const { event_id, topic, title, content, side, type } = req.body;
   if (!title) return res.status(400).json({ error: '请输入标题' });
-
-  const db = loadDb();
-  const note = {
-    id: genId(db),
-    owner,
-    event_id: event_id || null,
-    topic: topic || null,
-    title,
-    content: content || '',
-    side: side || null,
-    type: type || 'argument',
-    created_at: new Date().toLocaleString('zh-CN', { hour12: false }),
-    updated_at: new Date().toLocaleString('zh-CN', { hour12: false }),
-  };
-  db.notes.push(note);
-  saveDb(db);
-  res.json({ id: note.id, success: true });
+  try {
+    const { id } = await storage.createNote({ owner, event_id, topic, title, content, side, type });
+    res.json({ id, success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/notes/:id', (req, res) => {
+app.put('/api/notes/:id', async (req, res) => {
   const owner = getOwner(req);
   const { title, content, side, type, topic } = req.body;
-  const db = loadDb();
-  const note = db.notes.find(n => n.id === parseInt(req.params.id));
-  if (note && note.owner !== owner) return res.status(403).json({ error: '无权操作' });
-  if (note) {
-    note.title = title;
-    note.content = content;
-    note.side = side;
-    note.type = type;
-    if (topic !== undefined) note.topic = topic;
-    note.updated_at = new Date().toLocaleString('zh-CN', { hour12: false });
-    saveDb(db);
-  }
-  res.json({ success: true });
+  try {
+    res.json(await storage.updateNote({ id: parseInt(req.params.id), owner, title, content, side, type, topic }));
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
-app.delete('/api/notes/:id', (req, res) => {
+app.delete('/api/notes/:id', async (req, res) => {
   const owner = getOwner(req);
-  const db = loadDb();
-  const note = db.notes.find(n => n.id === parseInt(req.params.id));
-  if (note && note.owner !== owner) return res.status(403).json({ error: '无权操作' });
-  db.notes = db.notes.filter(n => n.id !== parseInt(req.params.id));
-  saveDb(db);
-  res.json({ success: true });
+  try {
+    res.json(await storage.deleteNote({ id: parseInt(req.params.id), owner }));
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 // ===== AI Debate History (Private per user) =====
-app.get('/api/ai-history', (req, res) => {
+app.get('/api/ai-history', async (req, res) => {
   const owner = getOwner(req);
   if (!owner) return res.status(401).json({ error: 'NEED_AUTH' });
-  const db = loadDb();
-  db.ai_history = db.ai_history || [];
-  const h = db.ai_history.find(x => x.owner === owner);
-  res.json(h ? { topic: h.topic, side: h.side, messages: h.messages } : { messages: [] });
+  try { res.json(await storage.getAiHistory(owner)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/ai-history', (req, res) => {
+app.post('/api/ai-history', async (req, res) => {
   const owner = getOwner(req);
   if (!owner) return res.status(401).json({ error: 'NEED_AUTH' });
   const { topic, side, messages } = req.body;
-  const db = loadDb();
-  db.ai_history = db.ai_history || [];
-  let h = db.ai_history.find(x => x.owner === owner);
-  if (h) { h.topic = topic; h.side = side; h.messages = messages; }
-  else db.ai_history.push({ owner, topic, side, messages });
-  saveDb(db);
-  res.json({ success: true });
+  try { res.json(await storage.saveAiHistory({ owner, topic, side, messages })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/ai-history', (req, res) => {
+app.delete('/api/ai-history', async (req, res) => {
   const owner = getOwner(req);
   if (!owner) return res.status(401).json({ error: 'NEED_AUTH' });
-  const db = loadDb();
-  db.ai_history = db.ai_history || [];
-  db.ai_history = db.ai_history.filter(x => x.owner !== owner);
-  saveDb(db);
-  res.json({ success: true });
+  try { res.json(await storage.deleteAiHistory(owner)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== AI Debate (DeepSeek 真实模型 + 模板兜底) =====
@@ -323,7 +613,6 @@ const aiResponses = {
   ],
 };
 
-// 模板兜底（未配置 API Key 或调用失败时）
 function templateResponse(topic, user_side) {
   const ai_side = user_side === '正方' ? '反方' : '正方';
   const responses = ai_side === '反方' ? aiResponses.con : aiResponses.pro;
@@ -339,7 +628,6 @@ function templateResponse(topic, user_side) {
   return { response: finalResponse, ai_side, model: 'template' };
 }
 
-// 是否配置了真实模型
 app.get('/api/ai-status', (req, res) => {
   res.json({ configured: !!process.env.DEEPSEEK_API_KEY });
 });
@@ -348,7 +636,6 @@ app.post('/api/ai-debate', async (req, res) => {
   const { topic, user_message, user_side, history = [], model = 'chat' } = req.body;
   const apiKey = process.env.DEEPSEEK_API_KEY;
 
-  // 未配置 Key：直接返回模板，避免报错
   if (!apiKey) return res.json(templateResponse(topic, user_side));
 
   const ai_side = user_side === '正方' ? '反方' : '正方';
@@ -471,6 +758,20 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🏛️  随地大小辩·网络辩论赛 running at http://localhost:${PORT}`);
+// ===== 启动 =====
+async function start() {
+  if (USE_PG) {
+    await initPg();
+    console.log('🐘 使用 PostgreSQL 数据库（DATABASE_URL 已配置）');
+  } else {
+    console.log('📄 使用本地 JSON 文件存储（未配置 DATABASE_URL）');
+  }
+  app.listen(PORT, () => {
+    console.log(`🏛️  随地大小辩·网络辩论赛 running at http://localhost:${PORT}`);
+  });
+}
+
+start().catch(e => {
+  console.error('❌ 启动失败:', e.message);
+  process.exit(1);
 });

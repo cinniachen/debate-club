@@ -1,6 +1,6 @@
 # 随地大小辩 · 网络辩论赛小工具
 
-一个服务小团体的轻量级网络辩论赛工具：凑人开赛、共享辩题、赛前准备、辩论计时，还内置 AI 模拟对辩陪练。纯本地运行，零外部数据库依赖。
+一个服务小团体的轻量级网络辩论赛工具：凑人开赛、共享辩题、赛前准备、辩论计时，还内置 AI 模拟对辩陪练。本地零依赖运行，部署可选接 PostgreSQL 持久化。
 
 > 适合辩论社团 / 朋友小群办赛，先跑起来再慢慢迭代。
 
@@ -71,7 +71,7 @@ debate-club/
 
 ## 🧱 技术栈
 
-- **后端**：Node.js + Express，JSON 文件存储（无数据库）
+- **后端**：Node.js + Express，PostgreSQL（部署）/ JSON 文件（本地回退，无需数据库即可开发）
 - **前端**：原生 HTML / CSS / JS 单页应用，无构建步骤
 - **AI 对辩**：DeepSeek API（OpenAI 兼容格式），无 Key 时回退模板
 - **语音输入**：浏览器原生 Web Speech API
@@ -81,7 +81,7 @@ debate-club/
 1. **准备区隔离是轻量身份**：笔记与 AI 对辩历史按「昵称」隔离，用于区分多人练习记录，**非强鉴权**，不要当作私密数据保险箱。
 2. **语音输入需安全上下文**：Web Speech API 在 `localhost` 或 `https` 下可用；部署到非 https 域名会失效，建议用 Chrome / Edge。
 3. **`.env` 含密钥，已 gitignore**：切勿手动把 `.env` 提交到仓库。
-4. **本地数据在 `data/db.json`**：重置时直接清空该文件即可，不影响代码。
+4. **数据存储**：本地（未配 `DATABASE_URL`）在 `data/db.json`，重置直接清空该文件；部署后数据在 Postgres，重置需清空对应表。
 
 ## 📡 API 速览
 
@@ -97,21 +97,22 @@ debate-club/
 
 ## 🌐 部署到 Railway（推荐给朋友用）
 
-本工具用 JSON 文件存数据。Railway 免费层支持挂载**持久卷（Volume）**，把数据目录挂上去即可持久化，几乎不用改代码。
+数据存 **PostgreSQL**（Railway 可一键附带 Postgres 服务，自动注入 `DATABASE_URL`），真正落库、重启/重部署都不丢。本地没配数据库时自动回退 JSON 文件（仅本地开发用，不影响线上）。
 
 ### 步骤
 1. 把代码推到 GitHub（本仓库已建好 `debate-club`）
 2. 打开 [railway.app](https://railway.app)，用 GitHub 登录 → **New Project** → **Deploy from GitHub repo** → 选 `debate-club`
-3. Railway 会自动执行 `npm install` + `node server.js`（构建/启动命令见 `railway.toml`）
-4. 在 Railway 项目里 **Add Volume**，挂载路径填 **`/app/data`**（比赛/辩题/笔记数据就持久保存，重启不丢）
-5. 在 **Variables** 里加 `DEEPSEEK_API_KEY` = 你的真实 Key（不填也能跑，AI 对辩回退模板）
-6. 部署完成后 Railway 会给一个 `xxx.up.railway.app` 域名，发给朋友即可访问
+3. Railway 自动 `npm install` + `node server.js`（构建/启动命令见 `railway.toml`）
+4. 在 Railway 项目里 **New → Database → PostgreSQL**（或 Add Service 加 Postgres）；Railway 会自动把 `DATABASE_URL` 注入到你的 Web 服务环境变量，无需手填
+5. 在 Web 服务的 **Variables** 里加 `DEEPSEEK_API_KEY` = 你的真实 Key（不填也能跑，AI 对辩回退模板）
+6. 部署完成后 Railway 给 `xxx.up.railway.app` 域名，发给朋友即可
 
 ### 要点
-- **端口**：Railway 会自动注入 `PORT`，`server.js` 已兼容，无需改动
-- **数据持久化**：靠第 4 步的 Volume（挂到 `/app/data`）；不挂则重启后数据丢失
-- **HTTPS**：Railway 自动提供，因此 AI 对辩的🎤语音输入在线上也能用
-- **密钥**：`.env` 不进仓库，`DEEPSEEK_API_KEY` 请在 Railway 的 Variables 里填
-- **免费额度**：足够小团体使用；长期无访问可能休眠，再访问会自动唤醒（约几十秒）
+- **端口**：Railway 注入 `PORT`，`server.js` 已兼容
+- **数据库**：第 4 步加 Postgres 后数据真正持久；**首次启动会自动建表**（events / registrations / topics / topic_votes / notes / ai_history）
+- **本地回退**：本机不设 `DATABASE_URL` 时用 JSON 文件（你本机 3456 照常），线上自动走 Postgres
+- **HTTPS**：Railway 自动提供，AI 对辩🎤语音输入线上可用
+- **密钥**：`.env` 不进仓库，Key 在 Railway Variables 填
+- **免费额度**：足够小团体；长期无访问可能休眠，再访问自动唤醒（约几十秒）
 
-> 备选：Render 免费层文件系统是临时的（重启丢数据），无持久磁盘，故不推荐直接用；若用 Render 需改接外部数据库。
+> 备选：Render 免费层文件系统是临时的（重启丢数据），无持久磁盘，故不推荐直接用；若用 Render 同样接 Postgres 即可。
